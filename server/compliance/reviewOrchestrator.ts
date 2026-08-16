@@ -5,6 +5,7 @@ import {
   completeReview, failReview, getClauses, getDocumentInternal, searchCandidateClauses, updateReviewProgress
 } from '../storage/store.js';
 import { validateEvidence } from './evidenceValidator.js';
+import { normalizeFindingSemantics } from './findingNormalizer.js';
 import { chatJson, ensureModel, modelContextLength } from './ollamaClient.js';
 import { calculateRisk } from './riskCalculator.js';
 import { findingJsonSchema, parseLlmJson, type RawFinding } from './responseParser.js';
@@ -92,10 +93,11 @@ async function analyzeClause(input: {
         raw = undefined;
         continue;
       }
+      const normalized = normalizeFindingSemantics(raw);
       const finding: Finding = {
-        id: `finding_${randomUUID()}`, ruleTitle: input.policy.title, status: raw.status, severity: raw.severity,
-        reason: raw.reason, remediation: raw.remediation, confidence: raw.confidence,
-        requiresHumanReview: raw.status === '확인 불가' || raw.confidence < 0.7,
+        id: `finding_${randomUUID()}`, ruleTitle: input.policy.title, status: normalized.status, severity: normalized.severity,
+        reason: normalized.reason, remediation: normalized.status === '적합' ? '별도 조치 없음' : raw.remediation, confidence: raw.confidence,
+        requiresHumanReview: normalized.requiresHumanReview,
         policyEvidence, targetEvidence
       };
       if (finding.status === '충돌 가능성' && ['Critical', 'High'].includes(finding.severity)) {

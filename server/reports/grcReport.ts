@@ -52,7 +52,9 @@ export async function createReviewPdf(review: ReviewSummary, findings: Finding[]
     };
     const section = (title: string) => {
       ensureSpace(42);
-      doc.moveDown(0.7).fillColor(colors.accent).fontSize(13).text(title);
+      doc.moveDown(0.7);
+      const titleY = doc.y;
+      doc.fillColor(colors.accent).fontSize(13).text(title, startX, titleY, { width });
       doc.strokeColor(colors.line).moveTo(startX, doc.y + 3).lineTo(startX + width, doc.y + 3).stroke();
       doc.moveDown(0.8);
     };
@@ -90,6 +92,7 @@ export async function createReviewPdf(review: ReviewSummary, findings: Finding[]
       doc.fontSize(8).text(label, x, cardY + 32, { width: cardWidth, align: 'center' });
     });
     doc.y = cardY + 64;
+    doc.x = startX;
 
     section('3. 쟁점별 판단 및 근거');
     findings.forEach((finding, index) => {
@@ -125,7 +128,10 @@ export async function createReviewPdf(review: ReviewSummary, findings: Finding[]
       const heading = line.match(/^#{1,3}\s+(.*)$/);
       ensureSpace(30);
       if (heading) doc.moveDown(0.5).fillColor(colors.accent).fontSize(heading[0].startsWith('# ') ? 14 : 11).text(heading[1]);
-      else if (line.trim()) doc.fillColor(colors.ink).fontSize(9.5).text(line.replace(/^[-*>]\s*/, '• '), { lineGap: 3 });
+      else if (line.trim()) {
+        const cleanLine = line.replace(/^[-*>]\s*/, '• ').replace(/\*\*/g, '').replace(/`/g, '');
+        doc.fillColor(colors.ink).fontSize(9.5).text(cleanLine, startX, doc.y, { width, lineGap: 3 });
+      }
       else doc.moveDown(0.4);
     }
 
@@ -134,7 +140,7 @@ export async function createReviewPdf(review: ReviewSummary, findings: Finding[]
       doc.switchToPage(index);
       doc.fillColor(colors.muted).fontSize(7.5).text(
         `검토 ID: ${review.id} · ${index + 1} / ${pages.count}`,
-        startX, doc.page.height - 30, { width, align: 'center' }
+        startX, doc.page.height - 28, { width, align: 'center', lineBreak: false }
       );
     }
     doc.end();
