@@ -98,6 +98,40 @@ async function analyzeClause(input: {
         requiresHumanReview: raw.status === '확인 불가' || raw.confidence < 0.7,
         policyEvidence, targetEvidence
       };
+      if (finding.status === '충돌 가능성' && ['Critical', 'High'].includes(finding.severity)) {
+        try {
+          const confirmationContent = await chatJson({
+            model: input.model,
+            system: `${systemPrompt}\n이 호출은 중대 충돌 판정의 독립 재검증입니다. 충돌 여부를 처음부터 다시 판단하십시오.`,
+            user: buildUserPrompt(input.policy, candidates), schema: findingJsonSchema,
+            signal: input.signal, temperature: 0
+          });
+          const confirmation = parseLlmJson(confirmationContent);
+          const confirmedPolicy = validateEvidence({
+            excerpts: confirmation.policyEvidence.map((item) => item.excerpt), clauses: [input.policy],
+            documentId: input.policyDocument.id, kind: 'policy', fullText: input.policyDocument.fullText
+          });
+          const confirmedTarget = validateEvidence({
+            excerpts: confirmation.targetEvidence.map((item) => item.excerpt), clauses: candidates,
+            documentId: input.targetDocument.id, kind: 'target', fullText: input.targetDocument.fullText
+          });
+          if (confirmation.status === '충돌 가능성' && confirmedPolicy.length && confirmedTarget.length) {
+            finding.severity = confirmation.severity;
+            finding.reason = confirmation.reason;
+            finding.remediation = confirmation.remediation;
+            finding.confidence = Math.min(finding.confidence, confirmation.confidence);
+            finding.policyEvidence = confirmedPolicy;
+            finding.targetEvidence = confirmedTarget;
+          } else {
+            finding.requiresHumanReview = true;
+            finding.reason += ' 중대 판정 재검증 결과가 일치하지 않아 담당자의 확인이 필요합니다.';
+          }
+        } catch (error) {
+          if (error instanceof AppError && error.code === 'REVIEW_CANCELLED') throw error;
+          finding.requiresHumanReview = true;
+          finding.reason += ' 중대 판정 재검증을 완료하지 못해 담당자의 확인이 필요합니다.';
+        }
+      }
       return { finding, missing: raw.missingInformation };
     } catch (error) {
       if (error instanceof AppError && ['REVIEW_CANCELLED', 'OLLAMA_TIMEOUT', 'OLLAMA_UNAVAILABLE'].includes(error.code)) throw error;

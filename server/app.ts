@@ -130,6 +130,7 @@ export function createApp() {
   });
 
   app.use((error: unknown, req: Request, res: Response, _next: NextFunction) => {
+    void _next;
     if (error instanceof multer.MulterError) {
       const message = error.code === 'LIMIT_FILE_SIZE' ? '파일 크기가 30MB 제한을 초과했습니다.' : '파일 업로드에 실패했습니다.';
       res.status(413).json({ ok: false, error: { code: error.code, message, requestId: req.id } });

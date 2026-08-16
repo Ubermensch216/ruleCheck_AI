@@ -58,7 +58,7 @@
     <span class:online={$grcStore.serverReady} class="connection"><i></i>{$grcStore.serverReady ? 'Ollama 연결됨' : '연결 확인 필요'}</span>
     <label class="model-select">모델
       <select value={$grcStore.model} onchange={(event) => setModel(event.currentTarget.value)} disabled={running($grcStore.review?.status)}>
-        {#each $grcStore.models as model}<option value={model.name}>{model.name}</option>{/each}
+        {#each $grcStore.models as model (model.name)}<option value={model.name}>{model.name}</option>{/each}
       </select>
     </label>
     <button class="ghost" onclick={() => historyOpen = true}>검토 이력 <span class="count">{$grcStore.history.length}</span></button>
@@ -78,7 +78,7 @@
   {/if}
 
   <section class="workspace" aria-label="문서 업로드">
-    {#each [{ kind: 'policy' as DocumentKind, step: '01', title: '검토 기준', description: '내부 규정·지침·표준 계약서', icon: '§' }, { kind: 'target' as DocumentKind, step: '02', title: '검토 대상', description: '계약서·기획안·업무위탁서', icon: '▤' }] as panel}
+    {#each [{ kind: 'policy' as DocumentKind, step: '01', title: '검토 기준', description: '내부 규정·지침·표준 계약서', icon: '§' }, { kind: 'target' as DocumentKind, step: '02', title: '검토 대상', description: '계약서·기획안·업무위탁서', icon: '▤' }] as panel (panel.kind)}
       {@const document = $grcStore[panel.kind]}
       <article class="upload-card" class:has-file={document} ondragover={(event) => event.preventDefault()} ondrop={(event) => drop(event, panel.kind)}>
         <div class="card-heading"><span class="step">{panel.step}</span><div><h2>{panel.title}</h2><p>{panel.description}</p></div></div>
@@ -88,7 +88,7 @@
             <div><strong>{document.filename}</strong><small>{document.charCount.toLocaleString()}자{document.pageCount ? ` · ${document.pageCount}페이지` : ''}</small></div>
             <span class="success">파싱 완료</span>
           </div>
-          {#if document.warnings.length}<ul class="warnings">{#each document.warnings as warning}<li>{warning}</li>{/each}</ul>{/if}
+          {#if document.warnings.length}<ul class="warnings">{#each document.warnings as warning (warning)}<li>{warning}</li>{/each}</ul>{/if}
           <label class="replace">다른 문서 선택<input type="file" accept=".pdf,.docx,.hwpx,.xlsx,.txt,.md,.csv" onchange={(event) => selectFile(event, panel.kind)} /></label>
         {:else}
           <label class="drop-zone">
@@ -126,7 +126,7 @@
       <div class="result-heading"><div><p class="eyebrow">REVIEW COMPLETE</p><h2>검토 결과</h2></div><div class={`risk risk-${$grcStore.review.overallRisk?.toLowerCase()}`}><small>종합 위험도</small><strong>{riskLabel($grcStore.review.overallRisk)}</strong></div></div>
       <div class="summary-card"><p>{$grcStore.review.summary}</p><span>검토 커버리지 {Math.round(($grcStore.review.coverageRate ?? 0) * 100)}%</span></div>
       <div class="kpi-grid">
-        {#each [['충돌 가능성', 'high'], ['일부 보완 필요', 'medium'], ['적합', 'low'], ['확인 불가', 'info']] as item}
+        {#each [['충돌 가능성', 'high'], ['일부 보완 필요', 'medium'], ['적합', 'low'], ['확인 불가', 'info']] as item (item[0])}
           <button class={`kpi ${item[1]}`} onclick={() => statusFilter = item[0]}><strong>{$grcStore.findings.filter((finding) => finding.status === item[0]).length}</strong><span>{item[0]}</span></button>
         {/each}
       </div>
@@ -134,7 +134,7 @@
       <div class="section-title"><div><h3>쟁점별 판단 매트릭스</h3><p>항목을 선택하면 양측 원문 근거를 확인할 수 있습니다.</p></div><select bind:value={statusFilter} aria-label="판정 필터"><option>전체</option><option>충돌 가능성</option><option>일부 보완 필요</option><option>적합</option><option>확인 불가</option></select></div>
       <div class="findings-table" role="table">
         <div class="table-head" role="row"><span>검토 항목</span><span>판정</span><span>검토 의견</span><span>조치</span></div>
-        {#each filteredFindings() as finding}
+        {#each filteredFindings() as finding (finding.id)}
           <button class="finding-row" role="row" onclick={() => openFinding(finding)}>
             <span><strong>{finding.ruleTitle}</strong><small>{finding.severity} · 신뢰도 {Math.round(finding.confidence * 100)}%</small></span>
             <span><i class={`badge status-${finding.status}`}>{finding.status}</i></span>
@@ -144,7 +144,7 @@
       </div>
 
       {#if ($grcStore.review.missingInformation?.length ?? 0) > 0}
-        <section class="missing"><h3>추가 확인 필요 자료</h3><ul>{#each $grcStore.review.missingInformation ?? [] as item}<li>{item}</li>{/each}</ul></section>
+        <section class="missing"><h3>추가 확인 필요 자료</h3><ul>{#each $grcStore.review.missingInformation ?? [] as item (item)}<li>{item}</li>{/each}</ul></section>
       {/if}
 
       <section class="opinion">
@@ -160,7 +160,7 @@
   <aside class="drawer" aria-label="검토 이력">
     <div class="drawer-head"><div><h2>검토 이력</h2><p>로컬에 저장된 검토 결과</p></div><button class="icon-button" aria-label="닫기" onclick={() => historyOpen = false}>×</button></div>
     <div class="history-list">
-      {#each $grcStore.history as item}
+      {#each $grcStore.history as item (item.id)}
         <article class="history-item">
           <button class="history-open" onclick={async () => { await loadReview(item.id); historyOpen = false; }}>
             <span class={`history-risk risk-${item.overallRisk?.toLowerCase()}`}></span><div><strong>{item.title}</strong><small>{item.targetDocName} · {new Date(item.createdAt).toLocaleString('ko-KR')}</small></div><i>{statusLabel(item.status)}</i>
@@ -177,8 +177,8 @@
   <aside class="drawer evidence-drawer" aria-label="판정 근거">
     <div class="drawer-head"><div><span class={`badge status-${selectedFinding.status}`}>{selectedFinding.status}</span><h2>{selectedFinding.ruleTitle}</h2></div><button class="icon-button" aria-label="닫기" onclick={() => selectedFinding = undefined}>×</button></div>
     <div class="evidence-body"><h3>판단</h3><p>{selectedFinding.reason}</p><h3>권고 조치</h3><p>{selectedFinding.remediation}</p>
-      <h3>기준 문서 근거</h3>{#each selectedFinding.policyEvidence as evidence}<blockquote><small>{evidence.clauseTitle}{evidence.page ? ` · ${evidence.page}페이지` : ''}</small>{evidence.excerpt}</blockquote>{/each}
-      <h3>대상 문서 근거</h3>{#each selectedFinding.targetEvidence as evidence}<blockquote><small>{evidence.clauseTitle}{evidence.page ? ` · ${evidence.page}페이지` : ''}</small>{evidence.excerpt}</blockquote>{:else}<p class="muted">확인 가능한 대상 문서 근거가 없습니다.</p>{/each}
+      <h3>기준 문서 근거</h3>{#each selectedFinding.policyEvidence as evidence (`${evidence.clauseId}-${evidence.startOffset}`)}<blockquote><small>{evidence.clauseTitle}{evidence.page ? ` · ${evidence.page}페이지` : ''}</small>{evidence.excerpt}</blockquote>{/each}
+      <h3>대상 문서 근거</h3>{#each selectedFinding.targetEvidence as evidence (`${evidence.clauseId}-${evidence.startOffset}`)}<blockquote><small>{evidence.clauseTitle}{evidence.page ? ` · ${evidence.page}페이지` : ''}</small>{evidence.excerpt}</blockquote>{:else}<p class="muted">확인 가능한 대상 문서 근거가 없습니다.</p>{/each}
       {#if selectedFinding.requiresHumanReview}<div class="human-review">담당자의 추가 확인이 필요한 항목입니다.</div>{/if}
     </div>
   </aside>

@@ -9,7 +9,11 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   ...svelte.configs['flat/recommended'],
   {
+    files: ['**/*.svelte'],
+    languageOptions: { parserOptions: { parser: tseslint.parser } }
+  },
+  {
     languageOptions: { globals: { ...globals.browser, ...globals.node } },
-    rules: { '@typescript-eslint/no-explicit-any': 'off' }
+    rules: { '@typescript-eslint/no-explicit-any': 'off', 'svelte/no-at-html-tags': 'off' }
   }
 );

@@ -13,7 +13,8 @@ const expectedMagic = new Map<string, Set<string>>([
 
 export function safeFilename(filename: string): string {
   const base = path.basename(filename).normalize('NFKC');
-  const cleaned = base.replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_').replace(/\s+/g, ' ').trim();
+  const printable = Array.from(base).map((character) => character.charCodeAt(0) < 32 ? '_' : character).join('');
+  const cleaned = printable.replace(/[<>:"/\\|?*]/g, '_').replace(/\s+/g, ' ').trim();
   return cleaned.slice(0, 180) || 'document';
 }
 

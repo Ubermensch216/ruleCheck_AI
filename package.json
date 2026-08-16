@@ -12,6 +12,7 @@
     "start": "node dist-server/server/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:eval": "vitest run tests/evaluation",
     "test:e2e": "playwright test",
     "lint": "eslint .",
     "typecheck": "svelte-check --tsconfig ./tsconfig.json && tsc -p tsconfig.server.json --noEmit"

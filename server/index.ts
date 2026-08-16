@@ -14,6 +14,11 @@ const app = createApp();
 const server = app.listen(env.PORT, env.HOST, () => {
   logger.info({ host: env.HOST, port: env.PORT }, 'GRC Compliance Reviewer started');
 });
+server.on('error', (error) => {
+  logger.fatal({ err: error, host: env.HOST, port: env.PORT }, 'Server failed to bind');
+  closeDatabase();
+  process.exit(1);
+});
 
 function shutdown(signal: string) {
   logger.info({ signal }, 'Shutting down');
