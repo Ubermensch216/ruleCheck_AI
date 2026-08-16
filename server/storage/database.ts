@@ -1,14 +1,26 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import Database from 'better-sqlite3';
+import { DatabaseSync } from 'node:sqlite';
 import { env } from '../config/env.js';
 
 fs.mkdirSync(path.dirname(env.DATABASE_PATH), { recursive: true });
 
-export const db = new Database(env.DATABASE_PATH);
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
-db.pragma('busy_timeout = 5000');
+export const db = new DatabaseSync(env.DATABASE_PATH);
+db.exec('PRAGMA journal_mode = WAL');
+db.exec('PRAGMA foreign_keys = ON');
+db.exec('PRAGMA busy_timeout = 5000');
+
+export function withTransaction<T>(callback: () => T): T {
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const result = callback();
+    db.exec('COMMIT');
+    return result;
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
+  }
+}
 
 export function migrate(): void {
   db.exec(`

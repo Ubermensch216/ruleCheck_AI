@@ -12,7 +12,7 @@ import type {
   ReviewStatus,
   ReviewSummary
 } from '../../shared/schemas.js';
-import { db } from './database.js';
+import { db, withTransaction } from './database.js';
 import { AppError } from '../errors.js';
 
 type Row = Record<string, any>;
@@ -72,7 +72,7 @@ export function insertDocument(input: {
   parsed: ParsedDocument;
   clauses: DocumentClause[];
 }): DocumentSummary {
-  const tx = db.transaction(() => {
+  withTransaction(() => {
     const now = new Date().toISOString();
     db.prepare(`
       INSERT INTO documents(id, kind, original_name, mime_type, sha256, size_bytes, char_count,
@@ -96,7 +96,6 @@ export function insertDocument(input: {
       insertFts.run(clause.id, input.id, clause.title, clause.text);
     }
   });
-  tx();
   return getDocument(input.id);
 }
 
@@ -221,7 +220,7 @@ export function updateReviewProgress(id: string, status: ReviewStatus, processed
 }
 
 export function completeReview(id: string, result: ReviewResult): void {
-  const tx = db.transaction(() => {
+  withTransaction(() => {
     const now = new Date().toISOString();
     db.prepare(`UPDATE reviews SET status='completed', progress=100, overall_risk=?, summary=?,
       draft_opinion=?, missing_information_json=?, coverage_rate=?, updated_at=?, completed_at=? WHERE id=?`)
@@ -241,7 +240,6 @@ export function completeReview(id: string, result: ReviewResult): void {
       }
     }
   });
-  tx();
 }
 
 export function failReview(id: string, code: string, message: string): void {
@@ -267,7 +265,7 @@ export async function deleteReview(id: string): Promise<void> {
       db.prepare('DELETE FROM clause_fts WHERE document_id=?').run(documentId);
     }
   }
-  const tx = db.transaction(() => {
+  withTransaction(() => {
     db.prepare('DELETE FROM reviews WHERE id=?').run(id);
     for (const documentId of documentIds) {
       const used = db.prepare(`SELECT COUNT(*) AS count FROM reviews
@@ -275,7 +273,6 @@ export async function deleteReview(id: string): Promise<void> {
       if (used.count === 0) db.prepare('DELETE FROM documents WHERE id=?').run(documentId);
     }
   });
-  tx();
 }
 
 export function newId(prefix: string): string {

@@ -16,7 +16,8 @@ const schema = z.object({
   MAX_ZIP_ENTRIES: z.coerce.number().int().positive().default(5000),
   MAX_ZIP_UNCOMPRESSED_BYTES: z.coerce.number().int().positive().default(100 * 1024 * 1024),
   MAX_CONCURRENT_REVIEWS: z.coerce.number().int().positive().default(1),
-  LOG_LEVEL: z.string().default('info')
+  LOG_LEVEL: z.string().default('info'),
+  PDF_FONT_PATH: z.string().optional()
 });
 
 const parsed = schema.parse(process.env);

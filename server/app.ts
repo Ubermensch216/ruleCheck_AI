@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import helmet from 'helmet';
 import multer from 'multer';
-import pinoHttp from 'pino-http';
+import { pinoHttp } from 'pino-http';
 import { createReviewSchema, documentKindSchema } from '../shared/schemas.js';
 import { env } from './config/env.js';
 import { AppError } from './errors.js';
