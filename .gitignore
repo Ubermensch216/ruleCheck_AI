@@ -11,4 +11,5 @@ server/fonts/*.ttf
 !server/fonts/LICENSE.txt
 *.log
 .DS_Store
-
+tmp/
+output/

@@ -275,6 +275,11 @@ export async function deleteReview(id: string): Promise<void> {
   });
 }
 
+export async function recoverDeletingReviews(): Promise<void> {
+  const rows = db.prepare(`SELECT id FROM reviews WHERE status='deleting'`).all() as Array<{ id: string }>;
+  for (const row of rows) await deleteReview(row.id);
+}
+
 export function newId(prefix: string): string {
   return `${prefix}_${randomUUID()}`;
 }

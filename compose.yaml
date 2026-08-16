@@ -2,7 +2,7 @@ services:
   grc-reviewer:
     build: .
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:3100:3000"
     environment:
       OLLAMA_URL: http://host.docker.internal:11434
       OLLAMA_MODEL: gemma4:e2b

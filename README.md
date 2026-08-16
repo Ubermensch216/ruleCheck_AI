@@ -55,7 +55,7 @@ Ollama가 호스트에서 실행 중일 때:
 docker compose up --build
 ```
 
-`compose.yaml`은 호스트 Ollama를 `host.docker.internal:11434`로 연결하고 애플리케이션은 `127.0.0.1:3000`에만 공개합니다. Ollama가 컨테이너 요청을 받을 수 있도록 Ollama의 허용 호스트 설정이 필요할 수 있습니다.
+`compose.yaml`은 호스트 Ollama를 `host.docker.internal:11434`로 연결하고 애플리케이션은 `127.0.0.1:3100`에만 공개합니다. Ollama가 컨테이너 요청을 받을 수 있도록 Ollama의 허용 호스트 설정이 필요할 수 있습니다.
 
 ## 검증 명령
 

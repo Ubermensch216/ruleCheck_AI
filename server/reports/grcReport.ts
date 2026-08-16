@@ -138,9 +138,10 @@ export async function createReviewPdf(review: ReviewSummary, findings: Finding[]
     const pages = doc.bufferedPageRange();
     for (let index = 0; index < pages.count; index += 1) {
       doc.switchToPage(index);
+      const footerY = doc.page.height - doc.page.margins.bottom - 11;
       doc.fillColor(colors.muted).fontSize(7.5).text(
         `검토 ID: ${review.id} · ${index + 1} / ${pages.count}`,
-        startX, doc.page.height - 28, { width, align: 'center', lineBreak: false }
+        startX, footerY, { width, align: 'center', lineBreak: false }
       );
     }
     doc.end();
