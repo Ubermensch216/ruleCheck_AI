@@ -1,0 +1,6 @@
+The application does not redistribute a font binary in source control.
+
+On Windows it uses the locally installed Malgun Gothic font. The Docker image
+installs the Nanum font package from the Debian repository. A custom font can be
+provided with PDF_FONT_PATH. Confirm the license of any custom font before
+redistribution.
