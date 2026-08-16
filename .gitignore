@@ -1,0 +1,14 @@
+node_modules/
+dist/
+dist-server/
+coverage/
+playwright-report/
+test-results/
+.env
+data/*
+!data/.gitkeep
+server/fonts/*.ttf
+!server/fonts/LICENSE.txt
+*.log
+.DS_Store
+
