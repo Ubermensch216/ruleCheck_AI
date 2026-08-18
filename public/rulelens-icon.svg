@@ -1,7 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
   <title id="title">RuleLens AI</title>
   <rect width="64" height="64" rx="16" fill="#101A30"/>
-  <path d="M19 14h19l9 9v27H19z" fill="#FFFFFF"/>
-  <path d="M38 14v9h9" fill="#CBDCFB"/>
-  <path d="m25 36 5 5 10-12" fill="none" stroke="#2563EB" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M16 11h22l10 10v31H16z" fill="#fff"/>
+  <path d="M38 11v10h10" fill="#dbeafe"/>
+  <path d="M22 27h16M22 32h11" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="38" cy="40" r="9" fill="#2563eb"/>
+  <path d="m34 40 3 3 6-7" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

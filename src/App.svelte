@@ -177,7 +177,7 @@
         <p class="eyebrow">REVIEW STOPPED</p>
         <h1>검토를 완료하지 못했습니다.</h1>
         <p>{$grcStore.review.errorMessage}</p>
-        <div class="next-action"><strong>다음 단계</strong><span>왼쪽의 문서와 모델을 확인한 뒤 검토를 다시 실행하세요. 실패 기록은 검토 이력에 보관됩니다.</span></div>
+        <div class="next-action"><strong>다음 단계</strong><span>왼쪽의 문서와 Ollama 연결 상태를 확인한 뒤 검토를 다시 실행하세요. 실패 기록은 검토 이력에 보관됩니다.</span></div>
       </section>
     {:else if $grcStore.review.status === 'cancelled'}
       <section class="review-state message-state cancelled-state">
