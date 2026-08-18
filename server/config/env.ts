@@ -9,6 +9,8 @@ const schema = z.object({
   OLLAMA_URL: z.string().url().default('http://127.0.0.1:11434'),
   OLLAMA_MODEL: z.string().default('gemma4:e2b'),
   OLLAMA_TIMEOUT_MS: z.coerce.number().int().positive().default(180000),
+  OLLAMA_CONTEXT_LENGTH: z.coerce.number().int().min(2048).default(4096),
+  OLLAMA_MAX_OUTPUT_TOKENS: z.coerce.number().int().min(256).max(2048).default(640),
   DATABASE_PATH: z.string().default('./data/grc.sqlite'),
   DATA_DIR: z.string().default('./data'),
   MAX_UPLOAD_BYTES: z.coerce.number().int().positive().default(30 * 1024 * 1024),

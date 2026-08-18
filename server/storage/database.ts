@@ -123,14 +123,62 @@ export function migrate(): void {
   db.prepare(`INSERT OR IGNORE INTO schema_migrations(version, applied_at) VALUES (1, ?)`).run(new Date().toISOString());
 }
 
-export function recoverInterruptedReviews(): void {
-  const now = new Date().toISOString();
-  db.prepare(`
-    UPDATE reviews
-    SET status='failed', error_code='SERVER_RESTARTED',
-        error_message='서버가 재시작되어 진행 중인 검토가 중단되었습니다.', updated_at=?
+export interface RecoverableReviewJob {
+  reviewId: string;
+  model: string;
+  policyDocumentId: string;
+  targetDocumentId: string;
+}
+
+/**
+ * 서버가 죽은 직후 재시작한 경우에만 검토를 이어서 실행합니다.
+ * 오래 전에 중단된 검토까지 되살리면 사용자가 이미 잊은 작업이 동시 실행 슬롯을 차지해
+ * 새로 누른 검토가 기약 없이 'queued' 상태로 대기하게 됩니다.
+ */
+const resumeWindowMs = 10 * 60 * 1000;
+
+export function recoverInterruptedReviews(): RecoverableReviewJob[] {
+  const interrupted = db.prepare(`
+    SELECT id AS review_id, model, policy_document_id, target_document_id, updated_at
+    FROM reviews
     WHERE status IN ('queued', 'parsing', 'analyzing', 'merging')
-  `).run(now);
+    ORDER BY created_at
+  `).all() as Array<{
+    review_id: string;
+    model: string;
+    policy_document_id: string;
+    target_document_id: string;
+    updated_at: string;
+  }>;
+  if (interrupted.length === 0) return [];
+
+  const now = Date.now();
+  const nowIso = new Date(now).toISOString();
+  const resumable = interrupted.filter((row) => {
+    const updatedAt = Date.parse(row.updated_at);
+    return Number.isFinite(updatedAt) && now - updatedAt <= resumeWindowMs;
+  });
+  const resumableIds = new Set(resumable.map((row) => row.review_id));
+
+  const markResumed = db.prepare(`
+    UPDATE reviews SET status='queued', progress=0, processed_clauses=0, total_clauses=0,
+      error_code=NULL, error_message=NULL, updated_at=? WHERE id=?
+  `);
+  const markStale = db.prepare(`
+    UPDATE reviews SET status='failed', error_code='SERVER_RESTARTED',
+      error_message='서버가 재시작되어 검토가 중단되었습니다. 다시 실행해 주세요.', updated_at=? WHERE id=?
+  `);
+  for (const row of interrupted) {
+    if (resumableIds.has(row.review_id)) markResumed.run(nowIso, row.review_id);
+    else markStale.run(nowIso, row.review_id);
+  }
+
+  return resumable.map((row) => ({
+    reviewId: row.review_id,
+    model: row.model,
+    policyDocumentId: row.policy_document_id,
+    targetDocumentId: row.target_document_id
+  }));
 }
 
 export function closeDatabase(): void {

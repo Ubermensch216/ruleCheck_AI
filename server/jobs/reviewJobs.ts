@@ -10,6 +10,7 @@ class ReviewJobManager {
   private readonly active = new Map<string, AbortController>();
 
   enqueue(job: Job): void {
+    if (this.active.has(job.reviewId) || this.queue.some((queued) => queued.reviewId === job.reviewId)) return;
     this.queue.push(job);
     void this.pump();
   }
@@ -36,6 +37,8 @@ class ReviewJobManager {
   private async pump(): Promise<void> {
     while (this.active.size < env.MAX_CONCURRENT_REVIEWS && this.queue.length > 0) {
       const job = this.queue.shift()!;
+      const review = getReview(job.reviewId);
+      if (['completed', 'failed', 'cancelled', 'deleting'].includes(review.status)) continue;
       const controller = new AbortController();
       this.active.set(job.reviewId, controller);
       void runReview(job.reviewId, job.model, job.policyDocumentId, job.targetDocumentId, controller.signal)

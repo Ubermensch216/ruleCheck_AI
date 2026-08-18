@@ -5,8 +5,8 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../server/app.js';
 import { env } from '../../server/config/env.js';
-import { closeDatabase, db, migrate } from '../../server/storage/database.js';
-import { createReview, newId } from '../../server/storage/store.js';
+import { closeDatabase, db, migrate, recoverInterruptedReviews } from '../../server/storage/database.js';
+import { createReview, getReview, newId } from '../../server/storage/store.js';
 
 const app = createApp();
 
@@ -72,6 +72,22 @@ describe('document API', () => {
     expect(response.body.review.title).toBe('변경된 검토 제목');
     const history = await request(app).get('/api/reviews');
     expect(history.body.items.find((item: { id: string }) => item.id === review.id).title).toBe('변경된 검토 제목');
+  });
+
+  it('returns interrupted reviews to the queue instead of failing them', () => {
+    const review = db.prepare('SELECT id FROM reviews ORDER BY created_at DESC LIMIT 1').get() as { id: string };
+    db.prepare(`UPDATE reviews SET status='analyzing', progress=54, processed_clauses=6,
+      total_clauses=11, error_code='STALE', error_message='이전 오류' WHERE id=?`).run(review.id);
+
+    const jobs = recoverInterruptedReviews();
+    const recovered = getReview(review.id);
+
+    expect(jobs.some((job) => job.reviewId === review.id)).toBe(true);
+    expect(recovered.status).toBe('queued');
+    expect(recovered.progress).toBe(0);
+    expect(recovered.processedClauses).toBe(0);
+    expect(recovered.errorCode).toBeUndefined();
+    expect(recovered.errorMessage).toBeUndefined();
   });
 
   it('does not log successful HTTP requests', async () => {

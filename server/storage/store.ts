@@ -222,7 +222,8 @@ export function getReviewResult(id: string): { review: ReviewSummary; findings: 
 
 export function updateReviewProgress(id: string, status: ReviewStatus, processed: number, total: number): void {
   const progress = total === 0 ? 0 : Math.min(99, Math.round((processed / total) * 90));
-  db.prepare(`UPDATE reviews SET status=?, progress=?, processed_clauses=?, total_clauses=?, updated_at=? WHERE id=?`)
+  db.prepare(`UPDATE reviews SET status=?, progress=?, processed_clauses=?, total_clauses=?,
+    error_code=NULL, error_message=NULL, updated_at=? WHERE id=?`)
     .run(status, progress, processed, total, new Date().toISOString(), id);
 }
 

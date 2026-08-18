@@ -47,6 +47,7 @@ RuleLens AI는 **기준 문서**와 **검토 대상 문서**를 로컬 Ollama AI
 ## 3. 가장 빠른 실행 방법 — Windows 개발 모드
 
 처음 실행할 때만 3.1~3.3 단계를 수행합니다. 이후에는 Ollama가 실행된 상태에서 `npm run dev`만 실행하면 됩니다.
+서버 코드를 수정하며 자동 재시작이 필요한 개발 중에만 `npm run dev:watch`를 사용하세요. 검토 실행 중에는 안정적인 `npm run dev`를 권장합니다.
 
 ### 3.1 필수 프로그램 설치
 
@@ -271,6 +272,8 @@ docker compose logs -f grc-reviewer
 | `OLLAMA_URL` | `http://127.0.0.1:11434` | Ollama API 주소 |
 | `OLLAMA_MODEL` | `gemma4:e2b` | 기본 검토 모델 |
 | `OLLAMA_TIMEOUT_MS` | `180000` | Ollama 호출 제한시간, 밀리초 |
+| `OLLAMA_CONTEXT_LENGTH` | `4096` | 검토 호출에 할당할 컨텍스트 길이 |
+| `OLLAMA_MAX_OUTPUT_TOKENS` | `640` | 조항별 판정의 최대 출력 토큰 수 |
 | `DATABASE_PATH` | `./data/grc.sqlite` | SQLite 데이터베이스 경로 |
 | `DATA_DIR` | `./data` | 업로드 문서 저장 폴더 |
 | `MAX_UPLOAD_BYTES` | `31457280` | 파일당 최대 업로드 크기, 기본 30MB |
@@ -360,7 +363,7 @@ PORT=3100
 
 ### 서버 재시작 후 진행 중이던 검토가 실패로 표시됩니다
 
-비정상 종료 당시 실행 중이던 검토는 데이터 일관성을 위해 자동으로 `failed` 처리됩니다. 문서가 남아 있다면 새 검토를 시작하세요. 완료된 검토 이력은 그대로 유지됩니다.
+비정상 종료 당시 실행 중이던 검토는 다음 서버 시작 시 대기열로 복구되어 처음부터 자동 재시작됩니다. 완료된 검토 이력은 그대로 유지됩니다.
 
 ### PDF의 한글이 깨집니다
 

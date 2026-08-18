@@ -3,17 +3,19 @@ import path from 'node:path';
 import { createApp } from './app.js';
 import { env } from './config/env.js';
 import { logger } from './logger.js';
+import { reviewJobs } from './jobs/reviewJobs.js';
 import { closeDatabase, migrate, recoverInterruptedReviews } from './storage/database.js';
 import { recoverDeletingReviews } from './storage/store.js';
 
 fs.mkdirSync(env.DATA_DIR, { recursive: true });
 fs.mkdirSync(path.join(env.DATA_DIR, 'documents'), { recursive: true });
 migrate();
-recoverInterruptedReviews();
-await recoverDeletingReviews();
 
 const app = createApp();
 const server = app.listen(env.PORT, env.HOST, () => {
+  const recoveredJobs = recoverInterruptedReviews();
+  void recoverDeletingReviews().catch((error) => logger.error({ err: error }, '삭제 중인 검토 복구에 실패했습니다.'));
+  recoveredJobs.forEach((job) => reviewJobs.enqueue(job));
   logger.info({ host: env.HOST, port: env.PORT }, 'RuleLens AI 서버가 시작되었습니다.');
 });
 server.on('error', (error) => {
