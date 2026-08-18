@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { evaluationCases } from './cases.js';
 
-describe('GRC evaluation dataset', () => {
+describe('RuleLens AI evaluation dataset', () => {
   it('contains the required labeled coverage', () => {
     expect(evaluationCases).toHaveLength(20);
     expect(new Set(evaluationCases.map((item) => item.id)).size).toBe(evaluationCases.length);

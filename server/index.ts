@@ -14,7 +14,7 @@ await recoverDeletingReviews();
 
 const app = createApp();
 const server = app.listen(env.PORT, env.HOST, () => {
-  logger.info({ host: env.HOST, port: env.PORT }, 'GRC Compliance Reviewer started');
+  logger.info({ host: env.HOST, port: env.PORT }, 'RuleLens AI started');
 });
 server.on('error', (error) => {
   logger.fatal({ err: error, host: env.HOST, port: env.PORT }, 'Server failed to bind');

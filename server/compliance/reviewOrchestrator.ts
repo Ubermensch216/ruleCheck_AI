@@ -8,7 +8,7 @@ import { validateEvidence } from './evidenceValidator.js';
 import { normalizeFindingSemantics } from './findingNormalizer.js';
 import { chatJson, ensureModel, modelContextLength } from './ollamaClient.js';
 import { calculateRisk } from './riskCalculator.js';
-import { findingJsonSchema, parseLlmJson, type RawFinding } from './responseParser.js';
+import { findingJsonSchema, parseLlmJson, schemaIssueHint, type RawFinding } from './responseParser.js';
 
 const systemPrompt = `당신은 한국 기업의 내부통제 및 GRC 검토 전문가입니다.
 기준 조항과 대상 문서 후보를 엄격하게 비교하여 JSON만 반환하십시오.
@@ -71,11 +71,12 @@ async function analyzeClause(input: {
   const candidates = candidateContext(input.candidates, maxTargetChars);
   let raw: RawFinding | undefined;
   let failure = '';
+  let retryHint = '';
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       const content = await chatJson({
         model: input.model, system: systemPrompt,
-        user: buildUserPrompt(input.policy, candidates, attempt ? failure : undefined),
+        user: buildUserPrompt(input.policy, candidates, attempt ? retryHint || failure : undefined),
         schema: findingJsonSchema, signal: input.signal
       });
       raw = parseLlmJson(content);
@@ -90,6 +91,7 @@ async function analyzeClause(input: {
       const needsBoth = raw.status !== '확인 불가';
       if (policyEvidence.length === 0 || (needsBoth && targetEvidence.length === 0)) {
         failure = '근거 excerpt가 제공된 원문과 정확히 일치하지 않습니다.';
+        retryHint = failure;
         raw = undefined;
         continue;
       }
@@ -138,6 +140,9 @@ async function analyzeClause(input: {
     } catch (error) {
       if (error instanceof AppError && ['REVIEW_CANCELLED', 'OLLAMA_TIMEOUT', 'OLLAMA_UNAVAILABLE'].includes(error.code)) throw error;
       failure = error instanceof Error ? error.message : '알 수 없는 응답 오류';
+      retryHint = error instanceof AppError && error.code === 'LLM_SCHEMA_INVALID'
+        ? `다음 필드를 수정하십시오. ${schemaIssueHint(error.details)}`
+        : failure;
     }
   }
   throw new AppError('CLAUSE_REVIEW_INVALID', `${input.policy.title} 검토 결과를 검증하지 못했습니다: ${failure}`, 502);

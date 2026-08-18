@@ -17,6 +17,25 @@ describe('parseLlmJson', () => {
     expect(parseLlmJson(content).confidence).toBe(0.9);
   });
 
+  it('normalizes common structured-output variations', () => {
+    const result = parseLlmJson(JSON.stringify({
+      ...valid,
+      severity: 'medium',
+      confidence: '85%',
+      policyEvidence: ['국내에 보관한다.'],
+      targetEvidence: ['서울 리전에 보관한다.'],
+      missingInformation: null
+    }));
+    expect(result.severity).toBe('Medium');
+    expect(result.confidence).toBe(0.85);
+    expect(result.policyEvidence).toEqual([{ excerpt: '국내에 보관한다.' }]);
+    expect(result.missingInformation).toEqual([]);
+  });
+
+  it('normalizes numeric percentage confidence', () => {
+    expect(parseLlmJson(JSON.stringify({ ...valid, confidence: 85 })).confidence).toBe(0.85);
+  });
+
   it('rejects an unknown status', () => {
     expect(() => parseLlmJson(JSON.stringify({ ...valid, status: '통과' }))).toThrow(/스키마/);
   });

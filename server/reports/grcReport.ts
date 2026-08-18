@@ -39,7 +39,7 @@ export async function createReviewPdf(review: ReviewSummary, findings: Finding[]
   const font = resolveFont();
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
-    const doc = new PDFDocument({ size: 'A4', margin: 42, bufferPages: true, info: { Title: review.title, Author: 'GRC Compliance Reviewer' } });
+    const doc = new PDFDocument({ size: 'A4', margin: 42, bufferPages: true, info: { Title: review.title, Author: 'RuleLens AI' } });
     doc.on('data', (chunk) => chunks.push(chunk));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);

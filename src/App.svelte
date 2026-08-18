@@ -52,7 +52,7 @@
 <header class="topbar">
   <div class="brand">
     <span class="brand-mark" aria-hidden="true">✓</span>
-    <div><strong>GRC Compliance Reviewer</strong><small>내부 규정 적합성 검토</small></div>
+    <div><strong>RuleLens AI</strong><small>근거 기반 규정 검토</small></div>
   </div>
   <div class="header-actions">
     <span class:online={$grcStore.serverReady} class="connection"><i></i>{$grcStore.serverReady ? 'Ollama 연결됨' : '연결 확인 필요'}</span>
