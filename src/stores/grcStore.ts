@@ -58,7 +58,7 @@ export async function uploadDocument(file: File, kind: DocumentKind): Promise<vo
   }
 }
 
-export async function startReview(title: string): Promise<void> {
+export async function startReview(): Promise<void> {
   const state = get(grcStore);
   if (!state.policy || !state.target) {
     grcStore.update((current) => ({ ...current, error: '기준 문서와 대상 문서를 모두 업로드해 주세요.' }));
@@ -72,13 +72,32 @@ export async function startReview(title: string): Promise<void> {
         policyDocumentId: state.policy.id,
         targetDocumentId: state.target.id,
         model: state.model,
-        title: title.trim() || `${state.target.filename} 내부검토`
+        title: `${state.target.filename} 내부검토`
       })
     });
     grcStore.update((current) => ({ ...current, review: result.review }));
     subscribe(result.review.id);
   } catch (error) {
     grcStore.update((current) => ({ ...current, error: message(error) }));
+  }
+}
+
+export async function updateReviewTitle(id: string, title: string): Promise<boolean> {
+  try {
+    const result = await api<{ review: ReviewSummary }>(`/api/reviews/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title })
+    });
+    grcStore.update((state) => ({
+      ...state,
+      review: state.review?.id === id ? result.review : state.review,
+      history: state.history.map((item) => item.id === id ? result.review : item),
+      error: ''
+    }));
+    return true;
+  } catch (error) {
+    grcStore.update((state) => ({ ...state, error: message(error) }));
+    return false;
   }
 }
 

@@ -14,16 +14,16 @@ await recoverDeletingReviews();
 
 const app = createApp();
 const server = app.listen(env.PORT, env.HOST, () => {
-  logger.info({ host: env.HOST, port: env.PORT }, 'RuleLens AI started');
+  logger.info({ host: env.HOST, port: env.PORT }, 'RuleLens AI 서버가 시작되었습니다.');
 });
 server.on('error', (error) => {
-  logger.fatal({ err: error, host: env.HOST, port: env.PORT }, 'Server failed to bind');
+  logger.fatal({ err: error, host: env.HOST, port: env.PORT }, '서버를 시작하지 못했습니다.');
   closeDatabase();
   process.exit(1);
 });
 
 function shutdown(signal: string) {
-  logger.info({ signal }, 'Shutting down');
+  logger.info({ signal }, '서버를 종료합니다.');
   server.close(() => { closeDatabase(); process.exit(0); });
   server.closeAllConnections();
   setTimeout(() => process.exit(1), 10_000).unref();

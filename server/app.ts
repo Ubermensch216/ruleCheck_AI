@@ -4,8 +4,9 @@ import { randomUUID } from 'node:crypto';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import helmet from 'helmet';
 import multer from 'multer';
+import type { Logger } from 'pino';
 import { pinoHttp } from 'pino-http';
-import { createReviewSchema, documentKindSchema } from '../shared/schemas.js';
+import { createReviewSchema, documentKindSchema, updateReviewSchema } from '../shared/schemas.js';
 import { env } from './config/env.js';
 import { AppError } from './errors.js';
 import { logger } from './logger.js';
@@ -17,17 +18,47 @@ import { createReviewPdf } from './reports/grcReport.js';
 import { safeFilename, validateUpload } from './security/uploadPolicy.js';
 import {
   createReview, deleteReview, getDocument, getReview, getReviewResult, insertDocument,
-  listReviews, newId
+  listReviews, newId, updateReviewTitle
 } from './storage/store.js';
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: env.MAX_UPLOAD_BYTES, files: 1 } });
 
-export function createApp() {
+function requestPath(url: string | undefined) {
+  return url?.split('?', 1)[0] || '/';
+}
+
+function requestLogDetails(req: Request, res: Response, responseTime: number) {
+  return {
+    method: req.method,
+    path: requestPath(req.originalUrl),
+    statusCode: res.statusCode,
+    durationMs: responseTime
+  };
+}
+
+export function createApp(appLogger: Logger = logger) {
   const app = express();
   app.disable('x-powered-by');
   app.use(helmet({ contentSecurityPolicy: { directives: { imgSrc: ["'self'", 'data:'], connectSrc: ["'self'"] } } }));
+  app.use(pinoHttp({
+    logger: appLogger,
+    genReqId: () => randomUUID(),
+    quietReqLogger: true,
+    quietResLogger: true,
+    customLogLevel: (_req, res, error) => {
+      if (error || res.statusCode >= 500) return 'error';
+      if (res.statusCode >= 400) return 'warn';
+      return 'silent';
+    },
+    customSuccessObject: (req, res, value) => requestLogDetails(req as Request, res as Response, value.responseTime),
+    customErrorObject: (req, res, error, value) => ({
+      ...requestLogDetails(req as Request, res as Response, value.responseTime),
+      ...(res.err ? { err: error } : {})
+    }),
+    customSuccessMessage: (req, res) => `요청 처리 실패: ${req.method} ${requestPath(req.url)} (${res.statusCode})`,
+    customErrorMessage: (req, res) => `서버 요청 처리 실패: ${req.method} ${requestPath(req.url)} (${res.statusCode})`
+  }));
   app.use(express.json({ limit: '1mb' }));
-  app.use(pinoHttp({ logger, genReqId: () => randomUUID() }));
 
   app.get('/api/health', async (_req, res) => {
     const ollama = await ollamaHealthy();
@@ -79,6 +110,13 @@ export function createApp() {
     try {
       const result = getReviewResult(req.params.id);
       res.json({ ok: true, ...result });
+    } catch (error) { next(error); }
+  });
+
+  app.patch('/api/reviews/:id', (req, res, next) => {
+    try {
+      const input = updateReviewSchema.parse(req.body);
+      res.json({ ok: true, review: updateReviewTitle(req.params.id, input.title) });
     } catch (error) { next(error); }
   });
 
@@ -144,7 +182,7 @@ export function createApp() {
       res.status(400).json({ ok: false, error: { code: 'VALIDATION_ERROR', message: '요청 값이 올바르지 않습니다.', requestId: req.id } });
       return;
     }
-    req.log.error({ err: error }, 'Unhandled request error');
+    res.err = error instanceof Error ? error : new Error(String(error));
     res.status(500).json({ ok: false, error: { code: 'INTERNAL_ERROR', message: '서버 내부 오류가 발생했습니다.', requestId: req.id } });
   });
   return app;

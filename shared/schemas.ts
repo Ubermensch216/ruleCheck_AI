@@ -48,6 +48,10 @@ export const createReviewSchema = z.object({
   title: z.string().trim().min(1).max(200)
 });
 
+export const updateReviewSchema = z.object({
+  title: z.string().trim().min(1).max(200)
+});
+
 export type DocumentKind = z.infer<typeof documentKindSchema>;
 export type ReviewStatus = z.infer<typeof reviewStatusSchema>;
 export type GrcStatus = z.infer<typeof grcStatusSchema>;

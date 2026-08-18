@@ -189,6 +189,13 @@ export function getReview(id: string): ReviewSummary {
   return mapReview(row);
 }
 
+export function updateReviewTitle(id: string, title: string): ReviewSummary {
+  getReview(id);
+  db.prepare('UPDATE reviews SET title=?, updated_at=? WHERE id=?')
+    .run(title, new Date().toISOString(), id);
+  return getReview(id);
+}
+
 export function getFindings(reviewId: string): Finding[] {
   const rows = db.prepare('SELECT * FROM findings WHERE review_id=? ORDER BY rowid').all(reviewId) as Row[];
   const evidenceStmt = db.prepare('SELECT * FROM evidence WHERE finding_id=? ORDER BY id');

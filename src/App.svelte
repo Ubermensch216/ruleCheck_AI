@@ -1,15 +1,17 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import DOMPurify from 'dompurify';
   import { marked } from 'marked';
   import type { DocumentKind, Finding } from '../shared/schemas';
   import {
     cancelCurrentReview, deleteReview, grcStore, initialize, loadReview, reset,
-    setModel, startReview, uploadDocument
+    startReview, updateReviewTitle, uploadDocument
   } from './stores/grcStore';
 
-  let title = '';
   let historyOpen = false;
+  let editingReviewId: string | undefined;
+  let editedTitle = '';
+  let titleInput: HTMLInputElement;
   let selectedFinding: Finding | undefined;
   let statusFilter = '전체';
 
@@ -45,6 +47,25 @@
     if ($grcStore.review?.draftOpinion) await navigator.clipboard.writeText($grcStore.review.draftOpinion);
   }
 
+  async function editReviewTitle(id: string, title: string) {
+    editingReviewId = id;
+    editedTitle = title;
+    await tick();
+    titleInput.focus();
+    titleInput.select();
+  }
+
+  function cancelTitleEdit() {
+    editingReviewId = undefined;
+    editedTitle = '';
+  }
+
+  async function saveReviewTitle(id: string) {
+    const title = editedTitle.trim();
+    if (!title) return;
+    if (await updateReviewTitle(id, title)) cancelTitleEdit();
+  }
+
   onMount(() => { void initialize(); });
 </script>
 
@@ -55,7 +76,7 @@
 
 <header class="topbar">
   <div class="brand">
-    <span class="brand-mark" aria-hidden="true">✓</span>
+    <img class="brand-mark" src="/rulelens-icon.svg" alt="" aria-hidden="true" />
     <div><strong>RuleLens AI</strong><small>근거 기반 규정 검토</small></div>
   </div>
   <div class="header-actions">
@@ -67,12 +88,6 @@
 
 <main class="app-layout">
   <aside class="control-sidebar" aria-label="검토 설정">
-    <div class="control-intro">
-      <p class="eyebrow">REVIEW SETUP</p>
-      <h1>검토 설정</h1>
-      <p>문서를 순서대로 준비하면 결과가 오른쪽에 표시됩니다.</p>
-    </div>
-
     {#if $grcStore.error}
       <div class="alert error compact-alert" role="alert"><strong>처리할 수 없습니다</strong><span>{$grcStore.error}</span></div>
     {/if}
@@ -80,10 +95,16 @@
     <div class="control-steps">
       {#each [{ kind: 'policy' as DocumentKind, step: '01', title: '검토 기준', description: '판단 기준이 되는 규정·지침', icon: '§' }, { kind: 'target' as DocumentKind, step: '02', title: '검토 대상', description: '기준과 비교할 계약서·정책', icon: '▤' }] as panel (panel.kind)}
         {@const document = $grcStore[panel.kind]}
-        <section class="control-step" class:complete={Boolean(document)} ondragover={(event) => event.preventDefault()} ondrop={(event) => drop(event, panel.kind)}>
+        <section class="control-step" class:complete={Boolean(document)} role="group" aria-label={`${panel.title} 문서`} ondragover={(event) => event.preventDefault()} ondrop={(event) => drop(event, panel.kind)}>
           <div class="step-heading">
             <span class="step">{document ? '✓' : panel.step}</span>
             <div><h2>{panel.title}</h2><p>{panel.description}</p></div>
+            {#if document}
+              <label class="replace-icon" title="다른 문서 선택">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 0 1-14.9 4M4 12A8 8 0 0 1 18.9 8M5 16H2v3M19 8h3V5" /></svg>
+                <input type="file" aria-label={`${panel.title} 다른 문서 선택`} accept=".pdf,.docx,.hwpx,.xlsx,.txt,.md,.csv" onchange={(event) => selectFile(event, panel.kind)} />
+              </label>
+            {/if}
           </div>
           {#if document}
             <div class="compact-file">
@@ -92,7 +113,6 @@
               <span class="success">완료</span>
             </div>
             {#if document.warnings.length}<ul class="warnings">{#each document.warnings as warning (warning)}<li>{warning}</li>{/each}</ul>{/if}
-            <label class="replace">다른 문서 선택<input type="file" accept=".pdf,.docx,.hwpx,.xlsx,.txt,.md,.csv" onchange={(event) => selectFile(event, panel.kind)} /></label>
           {:else}
             <label class="compact-drop">
               <span class="drop-icon" aria-hidden="true">{panel.icon}</span>
@@ -106,17 +126,9 @@
       <section class="control-step execution-step" class:complete={Boolean($grcStore.review?.status === 'completed')}>
         <div class="step-heading">
           <span class="step">03</span>
-          <div><h2>검토 실행</h2><p>모델과 제목을 확인하세요.</p></div>
+          <div><h2>검토 실행</h2></div>
         </div>
-        <label class="field-label">AI 모델
-          <select value={$grcStore.model} onchange={(event) => setModel(event.currentTarget.value)} disabled={running($grcStore.review?.status) || !$grcStore.serverReady}>
-            {#each $grcStore.models as model (model.name)}<option value={model.name}>{model.name}</option>{/each}
-          </select>
-        </label>
-        <label class="field-label">검토 제목
-          <input bind:value={title} placeholder={$grcStore.target ? `${$grcStore.target.filename} 내부검토` : '문서 준비 후 자동 입력'} disabled={running($grcStore.review?.status)} />
-        </label>
-        <button class="primary run-button" disabled={!$grcStore.policy || !$grcStore.target || running($grcStore.review?.status)} onclick={() => startReview(title)}>
+        <button class="primary run-button" disabled={!$grcStore.policy || !$grcStore.target || running($grcStore.review?.status)} onclick={startReview}>
           <span aria-hidden="true">⌕</span> 근거 기반 검토 실행
         </button>
       </section>
@@ -216,10 +228,21 @@
     <div class="history-list">
       {#each $grcStore.history as item (item.id)}
         <article class="history-item">
-          <button class="history-open" onclick={async () => { await loadReview(item.id); historyOpen = false; }}>
-            <span class={`history-risk risk-${item.overallRisk?.toLowerCase()}`}></span><div><strong>{item.title}</strong><small>{item.targetDocName} · {new Date(item.createdAt).toLocaleString('ko-KR')}</small></div><i>{statusLabel(item.status)}</i>
-          </button>
-          <button class="delete" aria-label={`${item.title} 삭제`} onclick={() => removeReview(item.id)}>삭제</button>
+          {#if editingReviewId === item.id}
+            <form class="history-edit" onsubmit={(event) => { event.preventDefault(); void saveReviewTitle(item.id); }}>
+              <label><span class="sr-only">검토 제목</span><input bind:this={titleInput} bind:value={editedTitle} maxlength="200" /></label>
+              <button class="history-action save" type="submit" disabled={!editedTitle.trim()} aria-label="제목 저장" title="저장">✓</button>
+              <button class="history-action" type="button" onclick={cancelTitleEdit} aria-label="제목 변경 취소" title="취소">×</button>
+            </form>
+          {:else}
+            <button class="history-open" onclick={async () => { await loadReview(item.id); historyOpen = false; }}>
+              <span class={`history-risk risk-${item.overallRisk?.toLowerCase()}`}></span><div><strong>{item.title}</strong><small>{item.targetDocName} · {new Date(item.createdAt).toLocaleString('ko-KR')}</small></div><i>{statusLabel(item.status)}</i>
+            </button>
+            <button class="history-action edit" aria-label={`${item.title} 제목 변경`} title="제목 변경" onclick={() => void editReviewTitle(item.id, item.title)}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 16-.8 4.8L8 20 19 9l-4-4L4 16Zm9.5-9.5 4 4" /></svg>
+            </button>
+            <button class="delete" aria-label={`${item.title} 삭제`} onclick={() => removeReview(item.id)}>삭제</button>
+          {/if}
         </article>
       {:else}<p class="empty">저장된 검토 이력이 없습니다.</p>{/each}
     </div>

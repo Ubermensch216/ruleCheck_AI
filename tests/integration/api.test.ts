@@ -1,11 +1,22 @@
 import fs from 'node:fs/promises';
+import { PassThrough } from 'node:stream';
+import pino from 'pino';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../server/app.js';
 import { env } from '../../server/config/env.js';
 import { closeDatabase, db, migrate } from '../../server/storage/database.js';
+import { createReview, newId } from '../../server/storage/store.js';
 
 const app = createApp();
+
+function appWithCapturedLogs() {
+  const lines: string[] = [];
+  const stream = new PassThrough();
+  stream.on('data', (chunk) => lines.push(...chunk.toString().trim().split('\n').filter(Boolean)));
+  const testLogger = pino({ level: 'trace', base: undefined }, stream);
+  return { app: createApp(testLogger), lines };
+}
 
 describe('document API', () => {
   beforeAll(async () => {
@@ -40,5 +51,59 @@ describe('document API', () => {
       .attach('file', Buffer.from('payload'), 'payload.exe');
     expect(response.status).toBe(415);
     expect(response.body.error.code).toBe('UNSUPPORTED_FILE_TYPE');
+  });
+
+  it('renames a review from review history', async () => {
+    const policy = await request(app).post('/api/documents').field('kind', 'policy')
+      .attach('file', Buffer.from('제1조 기준 문서입니다.'), 'rename-policy.txt');
+    const target = await request(app).post('/api/documents').field('kind', 'target')
+      .attach('file', Buffer.from('제1조 대상 문서입니다.'), 'rename-target.txt');
+    const review = createReview({
+      id: newId('review'),
+      title: '변경 전 제목',
+      policyDocumentId: policy.body.document.id,
+      targetDocumentId: target.body.document.id,
+      model: 'test-model'
+    });
+
+    const response = await request(app).patch(`/api/reviews/${review.id}`).send({ title: '  변경된 검토 제목  ' });
+
+    expect(response.status).toBe(200);
+    expect(response.body.review.title).toBe('변경된 검토 제목');
+    const history = await request(app).get('/api/reviews');
+    expect(history.body.items.find((item: { id: string }) => item.id === review.id).title).toBe('변경된 검토 제목');
+  });
+
+  it('does not log successful HTTP requests', async () => {
+    const { app: loggedApp, lines } = appWithCapturedLogs();
+
+    const response = await request(loggedApp).get('/index.html');
+
+    expect(response.status).toBe(200);
+    expect(lines).toEqual([]);
+  });
+
+  it('logs failed requests without headers, query strings, or response metadata', async () => {
+    const { app: loggedApp, lines } = appWithCapturedLogs();
+
+    const response = await request(loggedApp)
+      .post('/missing?token=secret')
+      .set('authorization', 'Bearer secret');
+
+    expect(response.status).toBe(404);
+    expect(lines).toHaveLength(1);
+
+    const entry = JSON.parse(lines[0]) as Record<string, unknown>;
+    expect(entry.level).toBe(40);
+    expect(entry.msg).toBe('요청 처리 실패: POST /missing (404)');
+    expect(entry).toMatchObject({
+      reqId: expect.any(String),
+      method: 'POST',
+      path: '/missing',
+      statusCode: 404
+    });
+    expect(entry).not.toHaveProperty('req');
+    expect(entry).not.toHaveProperty('res');
+    expect(JSON.stringify(entry)).not.toContain('secret');
   });
 });
