@@ -19,7 +19,9 @@ Ollama가 실행 중이 아니라면 별도 PowerShell에서 ollama serve를 실
 
 브라우저에서 http://127.0.0.1:5173 을 엽니다. 개발 API 기본 주소는 http://127.0.0.1:3000이며 /api/health에서 SQLite와 Ollama 연결 상태를 확인할 수 있습니다. 개발 모드에서 PORT를 바꿀 때는 VITE_API_PORT도 같은 값으로 맞추세요.
 
-## 사용자 매뉴얼
+![RuleLens AI 검토 결과 화면](docs/images/rulelens-review-result.png)
+
+## 1. 시스템에서 할 수 있는 일
 
 1. 왼쪽 검토 기준에 법령·내부 규정·계약서 등 기준 문서를 올립니다.
 2. 검토 대상에 실제 검토할 정책·보고서·계획서를 올립니다.
